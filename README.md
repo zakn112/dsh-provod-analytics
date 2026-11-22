@@ -22,19 +22,21 @@ DSH plugin: **Provod spending panel** — adds a "Spending" panel to the DSH sid
 ### From GitHub (no npm registry)
 
 A public GitHub repository is enough: the plugin is installed from a pinned
-commit, and the plugin-market index is published by GitHub Actions to GitHub
-Pages. `GITHUB.md` has the full walkthrough; the short form is:
+commit, and GitHub Actions commits the plugin-market index (`index.json`) back
+to the branch. `GITHUB.md` has the full walkthrough; the short form is:
 
 1. Push this package to the repository root.
-2. **Settings → Pages → Source: GitHub Actions**; the workflow publishes
-   `https://<owner>.github.io/<repo>/index.json`.
-3. Add that URL as a market source in **Plugins → Discover**, or install
+2. The first push runs **Actions → Update plugin index**, which commits
+   `index.json`.
+3. Add its raw URL as a market source in **Plugins → Discover**, or install
    directly with the pinned git spec:
 
    ```text
    plugin_manager action=install_bundle
    target=git+https://github.com/<owner>/<repo>.git#<40-hex commit>
    ```
+
+   Index URL: `https://raw.githubusercontent.com/<owner>/<repo>/main/index.json`
 
 ### From an npm registry
 
@@ -48,7 +50,7 @@ Publish with `npm publish` (see `PUBLISH.md`, including GitHub Packages), then:
 
 ```bash
 # Clone or download the plugin
-git clone https://github.com/your-org/dsh-provod-analytics.git
+git clone https://github.com/zakn112/dsh-provod-analytics.git
 
 # In DSH: Plugins → Add plugin → select the plugin directory
 ```

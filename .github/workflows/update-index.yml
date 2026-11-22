@@ -1,0 +1,50 @@
+name: Update plugin index
+
+# Regenerates index.json for the commit just pushed and commits it back to the
+# branch. DSH reads the index from raw.githubusercontent.com, so no Pages site,
+# token, or manual step is involved.
+#
+# The index pins the install to the pushed commit, so the code it describes can
+# never be swapped afterwards by a branch move.
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - index.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plugin-index
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # The bot's own index commit is skipped by paths-ignore; this also covers
+    # a manual re-run of an index-only commit.
+    if: ${{ !contains(github.event.head_commit.message || '', '[skip ci]') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate index.json
+        run: node scripts/generate-index.mjs --out index.json
+
+      - name: Commit when it changed
+        run: |
+          git add index.json
+          if git diff --cached --quiet; then
+            echo "index.json is unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: index for ${GITHUB_SHA:0:7} [skip ci]"
+          git push

@@ -1,8 +1,9 @@
 # Установка через GitHub (без npm)
 
-Плагин можно публиковать прямо в GitHub-репозитории. npm для этого не нужен: DSH умеет
-ставить бандл из git-источника, закреплённого на конкретном коммите, а индекс маркета
-(файл `index.json`) раздаётся с GitHub Pages.
+Плагин публикуется прямо в GitHub-репозитории. npm и GitHub Pages не нужны: DSH
+ставит бандл из git-источника, закреплённого на коммите, а индекс маркета
+(`index.json`) workflow коммитит в ветку, откуда его читает
+`raw.githubusercontent.com`.
 
 Схема:
 
@@ -10,27 +11,26 @@
 GitHub-репозиторий (плагин в корне)
    │  push в main
    ▼
-GitHub Actions: scripts/generate-index.mjs → dist/index.json
-   │  коммит закреплён в source.commit
+GitHub Actions: scripts/generate-index.mjs --out index.json
+   │  коммит index.json, закреплённый на SHA запушенного коммита
    ▼
-GitHub Pages: https://<owner>.github.io/<repo>/index.json
+raw.githubusercontent.com/<owner>/<repo>/main/index.json
    │  этот URL добавляется в DSH как источник маркета
    ▼
 Plugins → Discover → Install  (или install_bundle со git-спецификацией)
 ```
 
-Индекс закрепляет установку на SHA коммита, поэтому содержимое ветки не может
-подменить уже опубликованную версию: чтобы установить другой код, нужен новый коммит
-и новая запись версии.
+Индекс закрепляет установку на SHA коммита: содержимое ветки не может подменить
+уже опубликованную версию, для нового кода нужен новый коммит и новая запись
+версии.
 
-## Шаг 1. Создать репозиторий
+## Шаг 1. Репозиторий
 
-Репозиторий должен быть **публичным**: DSH скачивает пакет из git, а анонимный доступ
-к приватному репозиторию не гарантирован; GitHub Pages для приватных репозиториев на
-бесплатном плане недоступны.
+Репозиторий должен быть **публичным**: `raw.githubusercontent.com` и анонимный git
+не отдают приватный код без учётных данных, а загрузчик индекса их не передаёт.
 
-Содержимое каталога `dsh-provod-analytics` кладётся в **корень** репозитория (в корне
-должен лежать `package.json` плагина):
+Содержимое каталога `dsh-provod-analytics` кладётся в **корень** репозитория
+(`package.json` плагина — в корне):
 
 ```text
 <репозиторий>/
@@ -42,73 +42,71 @@ Plugins → Discover → Install  (или install_bundle со git-специфи
   locale/
   docs/
   scripts/generate-index.mjs
-  .github/workflows/publish-index.yml
-```
-
-```sh
-cd dsh-provod-analytics
-git init
-git add .
-git commit -m "dsh-provod-analytics 0.1.0"
-git branch -M main
-git remote add origin https://github.com/<owner>/<repo>.git
-git push -u origin main
+  .github/workflows/update-index.yml
 ```
 
 Перед первым коммитом замените заглушку `your-org` в `package.json`
 (`homepage`, `repository.url`, `bugs.url`) на реальные `<owner>/<repo>`: по этим
-полям npm и страница плагина строят ссылки. На установку из git они не влияют —
-индекс берёт адрес из самого репозитория.
-
-## Шаг 2. Включить GitHub Pages
-
-В репозитории: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-Больше ничего настраивать не нужно: workflow сам соберёт артефакт.
-
-## Шаг 3. Дождаться сборки индекса
-
-Вкладка **Actions → Publish plugin index**. Успешный запуск публикует
-`https://<owner>.github.io/<repo>/index.json`.
-
-Проверка индекса локально (без GitHub):
+полям страница плагина строит ссылки. На установку из git они не влияют — индекс
+берёт адрес из самого репозитория.
 
 ```sh
-node scripts/generate-index.mjs --repo <owner>/<repo> --commit "$(git rev-parse HEAD)" --out dist/index.json
+git init
+git add .
+git commit -m "dsh-provod-analytics 0.1.0"
+git branch -M main
+git remote add origin git@github.com:<owner>/<repo>.git
+git push -u origin main
 ```
 
-Скрипт сам проверяет имя пакета, SemVer версии, 40-символьный SHA и https-адрес
-иконки, поэтому неверный документ не будет опубликован.
+## Шаг 2. Индекс
 
-Проверка опубликованного файла:
+Первый же push запускает **Actions → Update plugin index**. Workflow генерирует
+`index.json` и коммитит его обратно в `main` (коммит бота с `[skip ci]`), поэтому
+руками ничего создавать не нужно.
+
+URL индекса:
+
+```text
+https://raw.githubusercontent.com/<owner>/<repo>/main/index.json
+```
+
+Ожидаемое содержимое: `"format": 1`, запись `"name": "dsh-provod-analytics"` и
+`"source": {"type": "git", ...}` с 40-символьным `commit`.
+
+Проверка локально, без GitHub:
 
 ```sh
-curl -s https://<owner>.github.io/<repo>/index.json
+node scripts/generate-index.mjs --repo <owner>/<repo> --commit "$(git rev-parse HEAD)" --out index.json
 ```
 
-Ожидаемо: `"format": 1`, запись `"name": "dsh-provod-analytics"` и `"source": {"type": "git", ...}`.
+Скрипт проверяет имя пакета, SemVer версии, полный SHA и https-адрес иконки,
+поэтому неверный документ не попадёт в ветку.
 
-## Шаг 4. Установить в DSH
+Если `raw` ещё отдаёт старую версию — это кэш CDN (до 5 минут); добавьте к URL
+`?v=<sha>` только для ручной проверки, в настройках DSH оставляйте чистый URL.
 
-### Вариант A. Через Discover (если в сборке есть вкладка Discover)
+## Шаг 3. Установка в DSH
 
-**Plugins → Discover** → добавить источник индекса → вставить
-`https://<owner>.github.io/<repo>/index.json` → найти «Расходы Provod» → **Install**.
+### Вариант A. Через Discover
 
-### Вариант B. Напрямую, тем же установщиком плагинов
+**Plugins → Discover** → добавить источник индекса → вставить URL из шага 2 →
+найти «Расходы Provod» → **Install**.
 
-Это стандартный `plugin_manager`, который использует и интерфейс. Нужна спецификация
-git с полным SHA (её же печатает `generate-index.mjs`):
+### Вариант B. Напрямую тем же установщиком
+
+`plugin_manager` принимает git-спецификацию, закреплённую на коммите (её печатает
+`generate-index.mjs`):
 
 ```text
 plugin_manager action=install_bundle
 target=git+https://github.com/<owner>/<repo>.git#<40-символьный SHA>
 ```
 
-Ожидаемый результат: `"application": "applied"` и пустой `warnings`. После установки
-в `list_bundles` у записи будет `source` вида `git+https://github.com/...` — это
-подтверждает, что код взят из репозитория, а не из локального каталога.
+Ожидаемо: `"application": "applied"` и пустой `warnings`; в `list_bundles`
+источник станет `git+https://github.com/...`.
 
-Если SHA неизвестен, возьмите последний коммит ветки:
+Последний SHA ветки:
 
 ```sh
 git ls-remote https://github.com/<owner>/<repo>.git refs/heads/main
@@ -116,28 +114,27 @@ git ls-remote https://github.com/<owner>/<repo>.git refs/heads/main
 
 ### Вариант C. Тарбол из GitHub Release
 
-К релизу можно приложить `npm pack`-архив и указывать в `install_bundle` прямую
-ссылку на `.tgz`. Это не даёт индекса маркета, но установка остаётся штатной.
+К релизу можно приложить архив `npm pack` и ставить его ссылкой на `.tgz`. Индекс
+маркета для этого не нужен, установка остаётся штатной.
 
 ## Обновление версии
 
 1. Поднимите `version` в `package.json` (например, `0.1.1`).
 2. Закоммитьте и запушьте в `main`.
-3. Workflow пересоберёт индекс уже с новым коммитом и версией.
-4. В DSH установите заново (вариант A или B с новым SHA) — обновление идёт через
-   тот же `install_bundle`.
+3. Workflow закоммитит новый `index.json`, закреплённый на новом коммите.
+4. В DSH установите заново (вариант A или B с новым SHA).
 
-Старые версии индекс не хранит: он описывает одну актуальную версию, чего достаточно
-для установки и обновления.
+Старые версии индекс не хранит: он описывает одну актуальную версию, чего
+достаточно для установки и обновления.
 
 ## Ограничения
 
-- **Приватный репозиторий.** Установка из git потребует, чтобы у процесса DSH были
-  учётные данные GitHub, а Pages недоступны на бесплатном плане. Для приватного кода
-  проще собрать `.tgz` и ставить им, либо раздать `index.json` с любого статического
-  хостинга.
-- **Индекс — это JSON по https-URL без редиректов.** Не указывайте путь к каталогу:
-  `.../repo` вместо `.../repo/index.json` может ответить 301, а загрузчик индекса
-  редиректы запрещает.
-- **Ключ Provod.** Публикация плагина не публикует ключ: ключ вводится в самой панели
+- **Приватный репозиторий.** `raw` и анонимный git недоступны без учётных данных,
+  а загрузчик индекса их не передаёт. Для приватного кода — `.tgz` из релиза или
+  собственный статический хостинг индекса.
+- **URL индекса — точный, без редиректов.** Загрузчик запрещает редиректы, поэтому
+  не указывайте путь к каталогу вместо `.../index.json`.
+- **Ключ Provod.** Публикация плагина не публикует ключ: он вводится в самой панели
   и хранится в хранилище учётных данных DSH (см. `INSTALL.md`, шаг 4).
+- **Actions.** Если Actions в репозитории отключены, `index.json` можно
+  сгенерировать локально и закоммитить вручную — формат тот же.
