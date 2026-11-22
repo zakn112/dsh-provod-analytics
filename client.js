@@ -70,6 +70,8 @@ window.__ModuleLoader__.load({
         balanceReserved: 'в резерве',
         balanceApproximate: '≈ пополнения минус расходы',
         balanceUnavailable: 'нет данных',
+        needCard: 'Потребность до конца месяца (прогноз)',
+        needFoot: 'прогноз минус с начала месяца',
         showAll: 'Показать все',
         showLess: 'Свернуть',
         errorTitle: 'Не удалось получить данные',
@@ -145,6 +147,8 @@ window.__ModuleLoader__.load({
         balanceReserved: 'reserved',
         balanceApproximate: '≈ credits minus usage',
         balanceUnavailable: 'no data',
+        needCard: 'Needed to month end (forecast)',
+        needFoot: 'forecast minus month to date',
         showAll: 'Show all',
         showLess: 'Show less',
         errorTitle: 'Could not load the report',
@@ -222,12 +226,13 @@ window.__ModuleLoader__.load({
       .pa-btn-primary:hover:not(:disabled){opacity:.88;background:var(--dsw-alias-brand-primary,#3a6df0)}
       .pa-scroll{flex:1;min-height:0;overflow:auto;scrollbar-gutter:stable;padding:16px}
       .pa-content{width:100%;max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-      .pa-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+      .pa-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
       .pa-card{border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.34));border-radius:10px;
         padding:12px 14px;background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.08));
         box-shadow:inset 3px 0 0 var(--pa-series,transparent)}
       .pa-card-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;
-        color:var(--dsw-alias-label-secondary,inherit)}
+        color:var(--dsw-alias-label-secondary,inherit);
+        min-height:33px;display:flex;align-items:flex-end;line-height:1.35}
       .pa-card-value{font-size:clamp(20px,3vw,26px);line-height:1.25;font-weight:600;
         font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .pa-card-foot{margin-top:2px;font-size:11px;color:var(--dsw-alias-label-secondary,inherit);opacity:.85;
@@ -275,6 +280,14 @@ window.__ModuleLoader__.load({
       .pa-table .pa-num{text-align:right;font-variant-numeric:tabular-nums}
       .pa-table .pa-model{max-width:300px}
       .pa-more{display:flex;justify-content:center;margin-top:8px}
+      .pa-disclosure{margin-top:8px}
+      .pa-summary{cursor:pointer;font-size:11px;list-style:none;user-select:none;
+        color:var(--dsw-alias-label-secondary,inherit)}
+      .pa-summary::-webkit-details-marker{display:none}
+      .pa-summary::before{content:"▸";display:inline-block;margin-right:5px;transition:transform .12s}
+      .pa-disclosure[open]>.pa-summary::before{transform:rotate(90deg)}
+      .pa-summary:hover{color:var(--dsw-alias-label-primary,inherit)}
+      .pa-disclosure-body{margin:8px 0 0;line-height:1.6}
       .pa-model-cell{display:flex;align-items:center;gap:7px;min-width:0}
       .pa-model-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .pa-share{display:flex;align-items:center;gap:7px;justify-content:flex-end}
@@ -489,33 +502,66 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** Переключатель «Показать все» / «Свернуть» для длинного списка. */
+    function MoreButton(props) {
+      const { t, expanded, count, onToggle } = props
+      if (count <= TOP_MODELS) return null
+      return h(
+        'div',
+        { className: 'pa-more' },
+        h(
+          'button',
+          {
+            className: 'pa-btn',
+            type: 'button',
+            'aria-expanded': expanded ? 'true' : 'false',
+            onClick: onToggle,
+          },
+          expanded ? t('showLess') : `${t('showAll')} · ${count}`,
+        ),
+      )
+    }
+
     /** Столбчатая разбивка одного периода. */
     function Bars(props) {
       const { models, currency, t, seriesFor = () => '' } = props
+      const [expanded, setExpanded] = useState(false)
       if (models.length === 0) return h('p', { className: 'pa-empty' }, t('noData'))
+      // Масштаб полос считается по всему списку, чтобы ТОП-10 не «растягивался».
       const max = models.reduce((value, row) => Math.max(value, Number(row.micros) || 0), 0)
+      const visible = limitRows(models, expanded)
       return h(
-        'div',
-        { className: 'pa-bars' },
-        models.map((row) => {
-          const width = max > 0 ? Math.min(100, Math.max(2, Math.round((Number(row.micros) / max) * 100))) : 0
-          const label = row.model ?? t('modelUnknown')
-          const key = modelKey(row.model)
-          return h(
-            'div',
-            { className: 'pa-bar', key },
-            h(
+        React.Fragment,
+        null,
+        h(
+          'div',
+          { className: 'pa-bars' },
+          visible.map((row) => {
+            const width = max > 0 ? Math.min(100, Math.max(2, Math.round((Number(row.micros) / max) * 100))) : 0
+            const label = row.model ?? t('modelUnknown')
+            const key = modelKey(row.model)
+            return h(
               'div',
-              { className: 'pa-bar-head' },
-              h('span', { className: 'pa-bar-name', title: label }, label),
-              h('span', { className: 'pa-bar-amount' }, money(row.micros, currency)),
-            ),
-            h(
-              'div',
-              { className: 'pa-bar-track' },
-              h('div', { className: `pa-bar-fill ${seriesFor(key)}`, style: { width: `${width}%` } }),
-            ),
-          )
+              { className: 'pa-bar', key },
+              h(
+                'div',
+                { className: 'pa-bar-head' },
+                h('span', { className: 'pa-bar-name', title: label }, label),
+                h('span', { className: 'pa-bar-amount' }, money(row.micros, currency)),
+              ),
+              h(
+                'div',
+                { className: 'pa-bar-track' },
+                h('div', { className: `pa-bar-fill ${seriesFor(key)}`, style: { width: `${width}%` } }),
+              ),
+            )
+          }),
+        ),
+        h(MoreButton, {
+          t,
+          expanded,
+          count: models.length,
+          onToggle: () => setExpanded((value) => !value),
         }),
       )
     }
@@ -555,6 +601,13 @@ window.__ModuleLoader__.load({
     /** Видимые строки таблицы: ТОП-10 или весь список после раскрытия. */
     function limitRows(rows, expanded, limit = TOP_MODELS) {
       return expanded ? rows : rows.slice(0, limit)
+    }
+
+    /** Потребность до конца месяца: прогноз минус уже потраченное за месяц. */
+    function needMicrosOf(report) {
+      const forecastMicros = report?.forecast?.micros ?? null
+      if (forecastMicros === null) return null
+      return (BigInt(forecastMicros) - BigInt(report.periods.month.totalMicros)).toString()
     }
 
     /** Таблица расходов: модель, оба периода, доля месяца. */
@@ -652,22 +705,7 @@ window.__ModuleLoader__.load({
           ),
         ),
         ),
-        sorted.length > TOP_MODELS
-          ? h(
-              'div',
-              { className: 'pa-more' },
-              h(
-                'button',
-                {
-                  className: 'pa-btn',
-                  type: 'button',
-                  'aria-expanded': expanded ? 'true' : 'false',
-                  onClick: () => setExpanded((value) => !value),
-                },
-                expanded ? t('showLess') : `${t('showAll')} · ${sorted.length}`,
-              ),
-            )
-          : null,
+        h(MoreButton, { t, expanded, count: sorted.length, onToggle: () => setExpanded((value) => !value) }),
       )
     }
 
@@ -887,11 +925,16 @@ window.__ModuleLoader__.load({
         excluded.length === 0
           ? null
           : h(
-              'p',
-              { className: 'pa-keymeta', style: { marginTop: '8px' } },
-              `${t('notRankedTitle')}: ${excluded
-                .map(({ entry, reason }) => `${entry.model ?? t('modelUnknown')} (${t(EXCLUSION_LABELS[reason])})`)
-                .join(', ')}`,
+              'details',
+              { className: 'pa-disclosure' },
+              h('summary', { className: 'pa-summary' }, `${t('notRankedTitle')} · ${excluded.length}`),
+              h(
+                'p',
+                { className: 'pa-keymeta pa-disclosure-body' },
+                excluded
+                  .map(({ entry, reason }) => `${entry.model ?? t('modelUnknown')} (${t(EXCLUSION_LABELS[reason])})`)
+                  .join(', '),
+              ),
             ),
       )
     }
@@ -1091,6 +1134,7 @@ window.__ModuleLoader__.load({
           ? null
           : String(Math.round(Number(report.periods.month.totalMicros) / days.length))
       const balance = report?.balance ?? null
+      const needMicros = report == null ? null : needMicrosOf(report)
       const balanceReserved = balance !== null && Number(balance.reservedMicros ?? 0) > 0
         ? money(balance.reservedMicros, currency)
         : null
@@ -1178,6 +1222,50 @@ window.__ModuleLoader__.load({
                 `${t('requests')}: ${count(report.periods.month.requests)} · ${t('rangeFrom')} ${shortDate(report.ranges.month.start)}`,
               ),
             ),
+            forecast === null || forecast === undefined
+              ? null
+              : h(
+                  React.Fragment,
+                  null,
+                  h(
+                    'div',
+                    { className: 'pa-card pa-series-3' },
+                    h('div', { className: 'pa-card-label' }, t('forecastCard')),
+                    h(
+                      'div',
+                      {
+                        className: 'pa-card-value',
+                        title: forecast.micros == null ? '' : money(forecast.micros, currency),
+                      },
+                      forecast.micros == null ? '—' : money(forecast.micros, currency),
+                    ),
+                    h(
+                      'div',
+                      { className: 'pa-card-foot' },
+                      forecast.micros == null
+                        ? t('forecastNoData')
+                        : `${t('forecastFoot')} · ${count(forecast.daysInMonth)} ${t('daysUnit')}`,
+                    ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'pa-card pa-series-5' },
+                    h('div', { className: 'pa-card-label' }, t('needCard')),
+                    h(
+                      'div',
+                      {
+                        className: 'pa-card-value',
+                        title: needMicros === null ? '' : money(needMicros, currency),
+                      },
+                      needMicros === null ? '—' : money(needMicros, currency),
+                    ),
+                    h(
+                      'div',
+                      { className: 'pa-card-foot' },
+                      needMicros === null ? t('forecastNoData') : t('needFoot'),
+                    ),
+                  ),
+                ),
             h(
               'div',
               { className: 'pa-card pa-series-4' },
@@ -1202,28 +1290,6 @@ window.__ModuleLoader__.load({
                       : `${t('balanceReserved')}: ${balanceReserved}`,
               ),
             ),
-            forecast === null || forecast === undefined
-              ? null
-              : h(
-                  'div',
-                  { className: 'pa-card pa-series-3' },
-                  h('div', { className: 'pa-card-label' }, t('forecastCard')),
-                  h(
-                    'div',
-                    {
-                      className: 'pa-card-value',
-                      title: forecast.micros == null ? '' : money(forecast.micros, currency),
-                    },
-                    forecast.micros == null ? '—' : money(forecast.micros, currency),
-                  ),
-                  h(
-                    'div',
-                    { className: 'pa-card-foot' },
-                    forecast.micros == null
-                      ? t('forecastNoData')
-                      : `${t('forecastFoot')} · ${count(forecast.daysInMonth)} ${t('daysUnit')}`,
-                  ),
-                ),
           ),
           days.length > 0
             ? h(
@@ -1349,6 +1415,7 @@ window.__ModuleLoader__.load({
         sortByAdjustedCostAsc,
         sortByMedianAsc,
         limitRows,
+        needMicrosOf,
         TOP_MODELS,
       },
       apply(ctx) {

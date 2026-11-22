@@ -221,4 +221,20 @@ assert.equal(helpers.limitRows(many, false).length, 10, 'до нажатия «�
 assert.equal(helpers.limitRows(many, true).length, 12, 'после раскрытия — все строки')
 assert.equal(helpers.limitRows(many.slice(0, 3), false).length, 3, 'короткий список не урезается')
 
+// «Потребность до конца месяца» — разница прогноза и уже потраченного.
+assert.equal(
+  helpers.needMicrosOf({ forecast: { micros: '200000000' }, periods: { month: { totalMicros: '150000000' } } }),
+  '50000000',
+)
+assert.equal(
+  helpers.needMicrosOf({ forecast: { micros: '100000000' }, periods: { month: { totalMicros: '150000000' } } }),
+  '-50000000',
+  'отрицательная разница сохраняется',
+)
+assert.equal(
+  helpers.needMicrosOf({ forecast: { micros: null }, periods: { month: { totalMicros: '1' } } }),
+  null,
+  'без прогноза потребности нет',
+)
+
 console.log('ok   client module: фабрика, панель, страница, словари, значок, порядок таблиц')

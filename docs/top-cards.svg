@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="300" viewBox="0 0 640 300">
+  <rect width="640" height="300" fill="#0f1216"/>
+  <rect x="24" y="96" width="592" height="108" rx="14" fill="#171b21" stroke="#2b3240"/>
+
+  <!-- Пять карточек: подпись, крупное значение, подпись под ним. -->
+  <g>
+    <rect x="40" y="110" width="104" height="80" rx="9" fill="#1d232c" stroke="#2b3240"/>
+    <rect x="40" y="110" width="4" height="80" rx="2" fill="#4f8ef7"/>
+    <rect x="54" y="122" width="54" height="4" rx="2" fill="#5a6478"/>
+    <rect x="54" y="136" width="72" height="12" rx="3" fill="#d6dee9"/>
+    <rect x="54" y="156" width="60" height="3.5" rx="1.75" fill="#3d4557"/>
+    <rect x="54" y="164" width="40" height="3.5" rx="1.75" fill="#3d4557"/>
+  </g>
+
+  <g>
+    <rect x="152" y="110" width="104" height="80" rx="9" fill="#1d232c" stroke="#2b3240"/>
+    <rect x="152" y="110" width="4" height="80" rx="2" fill="#2fb344"/>
+    <rect x="166" y="122" width="66" height="4" rx="2" fill="#5a6478"/>
+    <rect x="166" y="136" width="80" height="12" rx="3" fill="#d6dee9"/>
+    <rect x="166" y="156" width="56" height="3.5" rx="1.75" fill="#3d4557"/>
+    <rect x="166" y="164" width="44" height="3.5" rx="1.75" fill="#3d4557"/>
+  </g>
+
+  <g>
+    <rect x="264" y="110" width="104" height="80" rx="9" fill="#1d232c" stroke="#2b3240"/>
+    <rect x="264" y="110" width="4" height="80" rx="2" fill="#e8a317"/>
+    <rect x="278" y="122" width="72" height="4" rx="2" fill="#5a6478"/>
+    <rect x="278" y="136" width="76" height="12" rx="3" fill="#d6dee9"/>
+    <rect x="278" y="156" width="52" height="3.5" rx="1.75" fill="#3d4557"/>
+    <rect x="278" y="164" width="64" height="3.5" rx="1.75" fill="#3d4557"/>
+  </g>
+
+  <!-- Потребность: подпись в две строки, значение на общем уровне. -->
+  <g>
+    <rect x="376" y="110" width="104" height="80" rx="9" fill="#1d232c" stroke="#2b3240"/>
+    <rect x="376" y="110" width="4" height="80" rx="2" fill="#17a2b8"/>
+    <rect x="390" y="118" width="80" height="4" rx="2" fill="#5a6478"/>
+    <rect x="390" y="126" width="58" height="4" rx="2" fill="#5a6478"/>
+    <rect x="390" y="140" width="66" height="12" rx="3" fill="#d6dee9"/>
+    <rect x="390" y="160" width="76" height="3.5" rx="1.75" fill="#3d4557"/>
+    <rect x="390" y="168" width="48" height="3.5" rx="1.75" fill="#3d4557"/>
+  </g>
+
+  <g>
+    <rect x="488" y="110" width="104" height="80" rx="9" fill="#1d232c" stroke="#2b3240"/>
+    <rect x="488" y="110" width="4" height="80" rx="2" fill="#a25cf0"/>
+    <rect x="502" y="122" width="60" height="4" rx="2" fill="#5a6478"/>
+    <rect x="502" y="136" width="78" height="12" rx="3" fill="#d6dee9"/>
+    <rect x="502" y="156" width="46" height="3.5" rx="1.75" fill="#3d4557"/>
+    <rect x="502" y="164" width="58" height="3.5" rx="1.75" fill="#3d4557"/>
+  </g>
+
+  <rect x="24" y="60" width="180" height="7" rx="3.5" fill="#8794a8"/>
+  <rect x="24" y="236" width="300" height="5" rx="2.5" fill="#2b3240"/>
+  <rect x="24" y="250" width="180" height="4" rx="2" fill="#3d4557"/>
+</svg>
