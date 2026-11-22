@@ -15,19 +15,19 @@
         "en": "Provod workspace spending panel: today and month-to-date totals, month-end forecast, spending by day, per-model costs, model efficiency and latency.",
         "ru": "Панель расходов рабочего пространства Provod: итоги за сегодня и с начала месяца, прогноз, расходы по дням, стоимость по моделям, эффективность и задержки моделей."
       },
-      "icon": "https://raw.githubusercontent.com/zakn112/dsh-provod-analytics/be23ef275404fe8e8999672fb7ac33fc4161340d/icon.svg",
+      "icon": "https://raw.githubusercontent.com/zakn112/dsh-provod-analytics/6dd59eac083837720aa3e78afcbf70c51018b81e/icon.svg",
       "homepage": "https://github.com/zakn112/dsh-provod-analytics",
       "repository": {
         "url": "https://github.com/zakn112/dsh-provod-analytics"
       },
       "versions": [
         {
-          "version": "0.2.1",
-          "publishTimestamp": 1795335212,
+          "version": "0.3.0",
+          "publishTimestamp": 1795338641,
           "source": {
             "type": "git",
             "url": "https://github.com/zakn112/dsh-provod-analytics",
-            "commit": "be23ef275404fe8e8999672fb7ac33fc4161340d"
+            "commit": "6dd59eac083837720aa3e78afcbf70c51018b81e"
           },
           "engines": {
             "dsh": ">=0.2.2-rc.5"
