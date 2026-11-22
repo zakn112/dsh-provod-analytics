@@ -119,6 +119,8 @@ check('key: сохранение в хранилище и отчёт', async () 
   const stored = new Map()
   const credentials = {
     async resolve(name) {
+      // Обычный ключ для баланса лежит рядом с управляющим, как в DSH.
+      if (name === 'PROVOD_API_KEY') return { value: 'api-key', source: 'store' }
       return stored.has(name) ? { value: stored.get(name), source: 'store' } : undefined
     },
     async describe(name) {
@@ -150,28 +152,22 @@ check('key: сохранение в хранилище и отчёт', async () 
   assert.equal(after.json.value.removable, true, 'ключ из хранилища удаляем')
 
   const original = globalThis.fetch
-  // Отчёт делает четыре запроса подряд; отвечаем по форме тела.
-  let call = 0
+  // Отчёт делает четыре запроса: две выборки по моделям, баланс и часовые строки.
+  let modelCall = 0
   globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/v1/balance')) {
+      return fakeResponse(200, { availableBalance: 12.5, reservedBalance: 0.5, currency: 'RUB' })
+    }
     const body = JSON.parse(options.body)
-    call += 1
     if (body.granularity === 'hour') {
       return fakeResponse(
         200,
         analyticsBody([{ date__hour: '2026-11-20T09:00:00.000Z', total_usage_exact: '0.10000000', request_count: 1 }]),
       )
     }
-    if (Array.isArray(body.dimensions) && body.dimensions.includes('generation_id')) {
-      return fakeResponse(
-        200,
-        analyticsBody([
-          { model: 'model-a', generation_id: 'gen-1', avg_latency: 2, total_completion_tokens: 400 },
-          { model: 'model-a', generation_id: 'gen-2', avg_latency: 8, total_completion_tokens: 1200 },
-        ]),
-      )
-    }
+    modelCall += 1
     const rows =
-      call === 1
+      modelCall === 1
         ? [{ model: 'model-a', total_usage_exact: '0.40000000', request_count: 4 }]
         : [
             { model: 'model-a', total_usage_exact: '3.00000000', request_count: 30, avg_latency: 4 },
@@ -196,10 +192,13 @@ check('key: сохранение в хранилище и отчёт', async () 
     assert.ok(json.value.daily.days.length > 0)
     assert.ok(json.value.daily.days.every((day) => typeof day.date === 'string' && typeof day.micros === 'string'))
     assert.equal(typeof json.value.forecast.daysInMonth, 'number')
-    assert.equal(json.value.latency.samples, 2)
-    assert.equal(json.value.latency.models.length, 1)
-    assert.equal(json.value.latency.models[0].medianLatency, 5)
-    assert.equal(json.value.latency.models[0].p90Latency, 7.4)
+    assert.deepEqual(json.value.balance, {
+      availableMicros: '1250000000',
+      reservedMicros: '50000000',
+      currency: 'RUB',
+      approximate: false,
+    })
+    assert.equal(json.value.latency, undefined, 'профиль задержек больше не запрашивается')
     assert.equal(typeof json.value.ranges.month.start, 'string')
     assert.ok(json.value.ranges.month.start < json.value.ranges.today.start)
   } finally {

@@ -214,4 +214,11 @@ assert.deepEqual(
   ['fastest', 'slowest', 'unknown'],
 )
 
+// ТОП-10 в «Расходах по моделям»: до раскрытия — десять строк, после — все.
+const many = Array.from({ length: 12 }, (_, index) => ({ key: `m${index}` }))
+assert.equal(helpers.TOP_MODELS, 10, 'лимит списка моделей — 10')
+assert.equal(helpers.limitRows(many, false).length, 10, 'до нажатия «Показать все» — десять строк')
+assert.equal(helpers.limitRows(many, true).length, 12, 'после раскрытия — все строки')
+assert.equal(helpers.limitRows(many.slice(0, 3), false).length, 3, 'короткий список не урезается')
+
 console.log('ok   client module: фабрика, панель, страница, словари, значок, порядок таблиц')

@@ -14,6 +14,8 @@ import {
   dailySeries,
   decimalToMicros,
   enumerateDays,
+  fetchBalance,
+  fetchCredits,
   fetchReport,
   forecastFor,
   isValidTimeZone,
@@ -79,6 +81,64 @@ check('averageMicros: округление до микро', () => {
   assert.equal(averageMicros(100000000n, 3), 33333333n)
   assert.equal(averageMicros(1n, 2), 1n)
   assert.equal(averageMicros(0n, 0), null)
+})
+
+check('fetchBalance: остаток и резерв в микро', async () => {
+  const balance = await fetchBalance({
+    baseUrl: 'https://api.test',
+    token: 'k',
+    fetchImpl: async (url, options) => {
+      assert.equal(url, 'https://api.test/v1/balance')
+      assert.equal(options.headers.authorization, 'Bearer k')
+      return fakeResponse(200, { availableBalance: 12.5, reservedBalance: 0.75, currency: 'rub' })
+    },
+  })
+  assert.deepEqual(balance, {
+    availableMicros: '1250000000',
+    reservedMicros: '75000000',
+    currency: 'RUB',
+    approximate: false,
+  })
+})
+
+check('fetchBalance: обёртка data и отсутствующий резерв', async () => {
+  const balance = await fetchBalance({
+    baseUrl: 'https://api.test',
+    token: 'k',
+    fetchImpl: async () => fakeResponse(200, { data: { availableBalance: '3.00000001', currency: 'RUB' } }),
+  })
+  assert.equal(balance.availableMicros, '300000001')
+  assert.equal(balance.reservedMicros, null)
+  assert.equal(balance.approximate, false)
+})
+
+check('fetchCredits: пополнения минус расходы — оценка', async () => {
+  const balance = await fetchCredits({
+    baseUrl: 'https://api.test',
+    token: 'mgmt',
+    fetchImpl: async (url) => {
+      assert.equal(url, 'https://api.test/v1/credits')
+      return fakeResponse(200, { data: { total_credits: 1000, total_usage: 125.5 } })
+    },
+  })
+  assert.deepEqual(balance, {
+    availableMicros: '87450000000',
+    reservedMicros: null,
+    currency: 'RUB',
+    approximate: true,
+  })
+})
+
+check('fetchBalance: ответ без availableBalance — shape', async () => {
+  await assert.rejects(
+    () =>
+      fetchBalance({
+        baseUrl: 'https://api.test',
+        token: 'k',
+        fetchImpl: async () => fakeResponse(200, { currency: 'RUB' }),
+      }),
+    (error) => error instanceof AnalyticsError && error.code === 'shape',
+  )
 })
 
 check('aggregate: итог, модели и средние', () => {
@@ -303,9 +363,13 @@ check('forecastFor: в первые сутки прогноза нет', () => {
   assert.equal(forecast.daysInMonth, 30)
 })
 
-check('fetchReport: четыре запроса, дневная полоса, прогноз и профиль задержек', async () => {
+check('fetchReport: четыре запроса, баланс, дневная полоса и прогноз', async () => {
   const calls = []
   const fetchImpl = async (url, options) => {
+    if (url.endsWith('/v1/balance')) {
+      calls.push({ url })
+      return fakeResponse(200, { availableBalance: 12.5, reservedBalance: 0.5, currency: 'RUB' })
+    }
     const body = JSON.parse(options.body)
     calls.push({ url, body })
     if (body.granularity === 'hour') {
@@ -314,16 +378,6 @@ check('fetchReport: четыре запроса, дневная полоса, п
         reportBody([
           { date__hour: '2026-11-20T09:00:00.000Z', total_usage_exact: '0.10000000', request_count: 1 },
           { date__hour: '2026-11-19T09:00:00.000Z', total_usage_exact: '0.20000000', request_count: 2 },
-        ]),
-      )
-    }
-    if (Array.isArray(body.dimensions) && body.dimensions.includes('generation_id')) {
-      return fakeResponse(
-        200,
-        reportBody([
-          { model: 'model-a', generation_id: 'gen-1', avg_latency: 2, total_completion_tokens: 400 },
-          { model: 'model-a', generation_id: 'gen-2', avg_latency: 6, total_completion_tokens: 5000 },
-          { model: 'model-b', generation_id: 'gen-3', avg_latency: 1.5, total_completion_tokens: 300 },
         ]),
       )
     }
@@ -343,6 +397,7 @@ check('fetchReport: четыре запроса, дневная полоса, п
       return await fetchReport({
         baseUrl: 'https://api.test',
         token: 'key',
+        balanceToken: 'api-key',
         now: new Date('2026-11-20T14:50:20Z'),
         timeZone: 'Europe/Moscow',
       })
@@ -352,8 +407,9 @@ check('fetchReport: четыре запроса, дневная полоса, п
   })()
   assert.equal(calls.length, 4)
   assert.equal(calls[0].url, 'https://api.test/v1/analytics/query')
-  assert.equal(calls[2].body.granularity, 'hour')
-  assert.ok(calls[3].body.dimensions.includes('generation_id'))
+  assert.equal(calls[1].url, 'https://api.test/v1/analytics/query')
+  assert.equal(calls[2].url, 'https://api.test/v1/balance')
+  assert.equal(calls[3].body.granularity, 'hour')
   assert.equal(report.currency, 'RUB')
   assert.equal(report.periods.today.totalMicros, '40000000')
   assert.equal(report.periods.today.requests, 4)
@@ -369,12 +425,51 @@ check('fetchReport: четыре запроса, дневная полоса, п
   assert.equal(days.get('2026-11-19').micros, '20000000')
   assert.ok(report.forecast.micros !== null)
   assert.equal(report.forecast.daysInMonth, 30)
-  assert.equal(report.latency.samples, 3)
-  assert.equal(report.latency.models.length, 2)
-  assert.equal(report.latency.models[0].model, 'model-a')
-  assert.equal(report.latency.models[0].medianLatency, 4)
-  assert.equal(report.latency.models[0].p90Latency, 5.6)
-  assert.equal(report.latency.models[0].buckets.find((bucket) => bucket.key === 'huge').count, 1)
+  assert.deepEqual(report.balance, {
+    availableMicros: '1250000000',
+    reservedMicros: '50000000',
+    currency: 'RUB',
+    approximate: false,
+  })
+  assert.equal(report.latency, undefined, 'таблица задержек убрана — Host её больше не запрашивает')
+})
+
+check('fetchReport: без обычного ключа — оценка по пополнениям', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith('/v1/credits')) {
+      return fakeResponse(200, { data: { total_credits: 4000, total_usage: 3079.26837535 } })
+    }
+    const body = JSON.parse(options.body)
+    if (body.granularity === 'hour') return fakeResponse(200, reportBody([]))
+    return fakeResponse(200, reportBody([{ model: 'x', total_usage_exact: '1.00000000', request_count: 1 }]))
+  }
+  try {
+    const report = await fetchReport({ baseUrl: 'https://api.test', token: 'mgmt', now: new Date() })
+    assert.equal(report.balance.approximate, true)
+    assert.equal(report.balance.availableMicros, '92073162465')
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+check('fetchReport: без баланса отчёт остаётся полным', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith('/v1/balance') || url.endsWith('/v1/credits')) {
+      return fakeResponse(403, { message: 'no balance for key' })
+    }
+    const body = JSON.parse(options.body)
+    if (body.granularity === 'hour') return fakeResponse(200, reportBody([]))
+    return fakeResponse(200, reportBody([{ model: 'x', total_usage_exact: '1.00000000', request_count: 1 }]))
+  }
+  try {
+    const report = await fetchReport({ baseUrl: 'https://api.test', token: 'k', balanceToken: 'api', now: new Date() })
+    assert.equal(report.balance, null)
+    assert.equal(report.periods.month.totalMicros, '100000000')
+  } finally {
+    globalThis.fetch = original
+  }
 })
 
 check('fetchReport: ключ не принят — код unauthorized', async () => {

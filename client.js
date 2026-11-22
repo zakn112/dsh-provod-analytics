@@ -38,7 +38,6 @@ window.__ModuleLoader__.load({
         colRequests: 'Запросов за месяц',
         totalRow: 'Итого',
         requests: 'Запросов',
-        perRequest: 'за обращение',
         breakdownTitle: 'Расходы по моделям',
         breakdownHint:
           'Полосы: длина — относительно крупнейшей модели периода, рядом — сумма. Ниже таблица с суммами за оба периода.',
@@ -66,18 +65,13 @@ window.__ModuleLoader__.load({
         colSpeed: 'Скорость',
         unitSeconds: 'с',
         unitTokensPerSecond: 'ток/с',
-        latencyTitle: 'Задержка по моделям',
-        latencyHint:
-          'Медиана и p90 времени ответа за месяц — по каждому запросу, а не по среднему. Столбцы справа — медиана при одинаковом объёме ответа: длинный ответ дольше по определению, поэтому сравнивать модели честно можно только внутри столбца. Строки — от быстрых к медленным.',
-        colSamples: 'Запросов',
-        colMedian: 'Медиана',
-        colP90: 'p90',
-        bucketShort: 'до 200',
-        bucketMedium: 'до 1k',
-        bucketLong: 'до 4k',
-        bucketHuge: 'больше 4k',
-        latencyTruncated: 'Сервис вернул не все запросы месяца: медиана и хвост посчитаны по части выборки.',
-        averageCard: 'Средняя за обращение',
+        balanceCard: 'Остаток на счёте',
+        balanceFoot: 'доступно к использованию',
+        balanceReserved: 'в резерве',
+        balanceApproximate: '≈ пополнения минус расходы',
+        balanceUnavailable: 'нет данных',
+        showAll: 'Показать все',
+        showLess: 'Свернуть',
         errorTitle: 'Не удалось получить данные',
         retry: 'Повторить',
         changeKey: 'Сменить ключ',
@@ -119,7 +113,6 @@ window.__ModuleLoader__.load({
         colRequests: 'Month requests',
         totalRow: 'Total',
         requests: 'Requests',
-        perRequest: 'per request',
         breakdownTitle: 'Spending by model',
         breakdownHint:
           'Bars: length is relative to the largest model of the period, the sum is beside it. The table below repeats both periods.',
@@ -147,18 +140,13 @@ window.__ModuleLoader__.load({
         colSpeed: 'Speed',
         unitSeconds: 's',
         unitTokensPerSecond: 'tok/s',
-        latencyTitle: 'Latency by model',
-        latencyHint:
-          'Median and p90 response time for the month — per request, not a mean. The columns on the right are the median at a similar output size: a longer answer is slower by definition, so models can be compared fairly only within a column. Rows are ordered fastest first.',
-        colSamples: 'Requests',
-        colMedian: 'Median',
-        colP90: 'p90',
-        bucketShort: 'up to 200',
-        bucketMedium: 'up to 1k',
-        bucketLong: 'up to 4k',
-        bucketHuge: 'over 4k',
-        latencyTruncated: 'The service returned only some of the month’s requests: the median and tail cover a part of the sample.',
-        averageCard: 'Average per request',
+        balanceCard: 'Account balance',
+        balanceFoot: 'available to use',
+        balanceReserved: 'reserved',
+        balanceApproximate: '≈ credits minus usage',
+        balanceUnavailable: 'no data',
+        showAll: 'Show all',
+        showLess: 'Show less',
         errorTitle: 'Could not load the report',
         retry: 'Retry',
         changeKey: 'Change key',
@@ -286,6 +274,7 @@ window.__ModuleLoader__.load({
       .pa-table tbody tr:hover td{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
       .pa-table .pa-num{text-align:right;font-variant-numeric:tabular-nums}
       .pa-table .pa-model{max-width:300px}
+      .pa-more{display:flex;justify-content:center;margin-top:8px}
       .pa-model-cell{display:flex;align-items:center;gap:7px;min-width:0}
       .pa-model-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .pa-share{display:flex;align-items:center;gap:7px;justify-content:flex-end}
@@ -560,12 +549,25 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** Сколько моделей показывается до нажатия «Показать все». */
+    const TOP_MODELS = 10
+
+    /** Видимые строки таблицы: ТОП-10 или весь список после раскрытия. */
+    function limitRows(rows, expanded, limit = TOP_MODELS) {
+      return expanded ? rows : rows.slice(0, limit)
+    }
+
     /** Таблица расходов: модель, оба периода, доля месяца. */
     function SpendingTable(props) {
       const { rows, report, currency, t, seriesFor = () => '' } = props
+      const [expanded, setExpanded] = useState(false)
       const monthTotal = Number(report.periods.month.totalMicros) || 0
       const sorted = [...rows].sort((left, right) => Number(right.month?.micros ?? 0) - Number(left.month?.micros ?? 0))
+      const visible = limitRows(sorted, expanded)
       return h(
+        React.Fragment,
+        null,
+        h(
         'div',
         { className: 'pa-table-wrap' },
         h(
@@ -589,7 +591,7 @@ window.__ModuleLoader__.load({
             null,
             sorted.length === 0
               ? h('tr', null, h('td', { colSpan: 5 }, h('p', { className: 'pa-empty' }, t('noData'))))
-              : sorted.map((entry) => {
+              : visible.map((entry) => {
                   const monthMicros = Number(entry.month?.micros ?? 0)
                   const requests = entry.month?.requests ?? 0
                   const share = monthTotal > 0 ? (monthMicros / monthTotal) * 100 : null
@@ -649,6 +651,23 @@ window.__ModuleLoader__.load({
             ),
           ),
         ),
+        ),
+        sorted.length > TOP_MODELS
+          ? h(
+              'div',
+              { className: 'pa-more' },
+              h(
+                'button',
+                {
+                  className: 'pa-btn',
+                  type: 'button',
+                  'aria-expanded': expanded ? 'true' : 'false',
+                  onClick: () => setExpanded((value) => !value),
+                },
+                expanded ? t('showLess') : `${t('showAll')} · ${sorted.length}`,
+              ),
+            )
+          : null,
       )
     }
 
@@ -885,82 +904,6 @@ window.__ModuleLoader__.load({
       noSpending: 'reasonNoSpending',
     }
 
-    /** Ключи подписей корзин по объёму ответа. */
-    const BUCKET_LABELS = {
-      short: 'bucketShort',
-      medium: 'bucketMedium',
-      long: 'bucketLong',
-      huge: 'bucketHuge',
-    }
-
-    /** Профиль задержек: медиана, хвост и медианы при одинаковом объёме ответа. */
-    function LatencyTable(props) {
-      const { models, t, seriesFor = () => '' } = props
-      const columns = models[0]?.buckets ?? []
-      const sorted = sortByMedianAsc(models)
-      const latency = (value) =>
-        value === null || value === undefined
-          ? '—'
-          : `${value.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ${t('unitSeconds')}`
-      return h(
-        'div',
-        { className: 'pa-table-wrap' },
-        h(
-          'table',
-          { className: 'pa-table' },
-          h(
-            'thead',
-            null,
-            h(
-              'tr',
-              null,
-              h('th', { scope: 'col' }, t('colModel')),
-              h('th', { scope: 'col', className: 'pa-num' }, t('colSamples')),
-              h('th', { scope: 'col', className: 'pa-num' }, t('colMedian')),
-              h('th', { scope: 'col', className: 'pa-num' }, t('colP90')),
-              ...columns.map((bucket) =>
-                h(
-                  'th',
-                  { key: bucket.key, scope: 'col', className: 'pa-num' },
-                  t(BUCKET_LABELS[bucket.key] ?? bucket.key),
-                ),
-              ),
-            ),
-          ),
-          h(
-            'tbody',
-            null,
-            sorted.map((model) =>
-              h(
-                'tr',
-                { key: model.model ?? '\u0000' },
-                h(
-                  'td',
-                  { className: 'pa-model', title: model.model ?? '' },
-                  h(
-                    'span',
-                    { className: 'pa-model-cell' },
-                    h('span', { className: `pa-dot ${seriesFor(modelKey(model.model))}`, 'aria-hidden': 'true' }),
-                    h('span', { className: 'pa-model-name' }, model.model ?? t('modelUnknown')),
-                  ),
-                ),
-                h('td', { className: 'pa-num' }, count(model.samples)),
-                h('td', { className: 'pa-num' }, latency(model.medianLatency)),
-                h('td', { className: 'pa-num' }, latency(model.p90Latency)),
-                ...(model.buckets ?? []).map((bucket) =>
-                  h(
-                    'td',
-                    { key: bucket.key, className: 'pa-num' },
-                    bucket.count > 0 ? latency(bucket.medianLatency) : '—',
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      )
-    }
-
     /** Карточка «ключ не настроен» / управление ключом. */
     function KeyForm(props) {
       const { t, status, onSaved, compact } = props
@@ -1147,6 +1090,10 @@ window.__ModuleLoader__.load({
         report == null || days.length === 0
           ? null
           : String(Math.round(Number(report.periods.month.totalMicros) / days.length))
+      const balance = report?.balance ?? null
+      const balanceReserved = balance !== null && Number(balance.reservedMicros ?? 0) > 0
+        ? money(balance.reservedMicros, currency)
+        : null
       const hasEfficiency = merged.some(
         (entry) =>
           entry.month != null &&
@@ -1154,8 +1101,6 @@ window.__ModuleLoader__.load({
             entry.month.errors !== undefined ||
             entry.month.avgLatency !== undefined),
       )
-      // Профиль задержек — тоже от новой половины Host.
-      const latencyModels = Array.isArray(report?.latency?.models) ? report.latency.models : []
 
       const content = (() => {
         if (phase === 'error') {
@@ -1236,13 +1181,26 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'pa-card pa-series-4' },
-              h('div', { className: 'pa-card-label' }, t('averageCard')),
+              h('div', { className: 'pa-card-label' }, t('balanceCard')),
               h(
                 'div',
-                { className: 'pa-card-value' },
-                money(monthAverage(report), currency),
+                {
+                  className: 'pa-card-value',
+                  title: balance === null ? '' : money(balance.availableMicros, currency),
+                },
+                balance === null ? '—' : money(balance.availableMicros, currency),
               ),
-              h('div', { className: 'pa-card-foot' }, `${t('perRequest')} · ${t('month')}`),
+              h(
+                'div',
+                { className: 'pa-card-foot' },
+                balance === null
+                  ? t('balanceUnavailable')
+                  : balance.approximate === true
+                    ? t('balanceApproximate')
+                    : balanceReserved === null
+                      ? t('balanceFoot')
+                      : `${t('balanceReserved')}: ${balanceReserved}`,
+              ),
             ),
             forecast === null || forecast === undefined
               ? null
@@ -1334,22 +1292,6 @@ window.__ModuleLoader__.load({
                 h(EfficiencyTable, { rows: merged, currency, t, seriesFor }),
               )
             : null,
-          latencyModels.length > 0
-            ? h(
-                'section',
-                { className: 'pa-section' },
-                h(
-                  'div',
-                  { className: 'pa-section-head' },
-                  h('h2', { className: 'pa-section-title' }, t('latencyTitle')),
-                  h('p', { className: 'pa-section-hint' }, t('latencyHint')),
-                ),
-                report?.latency?.truncated === true
-                  ? h('div', { className: 'pa-note pa-warn' }, h('div', { className: 'pa-note-body' }, t('latencyTruncated')))
-                  : null,
-                h(LatencyTable, { models: latencyModels, t, seriesFor }),
-              )
-            : null,
         )
       })()
 
@@ -1396,14 +1338,6 @@ window.__ModuleLoader__.load({
       )
     }
 
-    /** Средняя стоимость одного обращения по всем моделям за месяц. */
-    function monthAverage(report) {
-      const micros = Number(report.periods.month.totalMicros) || 0
-      const requests = Number(report.periods.month.requests) || 0
-      if (requests <= 0) return null
-      return String(Math.round(micros / requests))
-    }
-
     return {
       inject: ['slots', 'locale'],
       helpers: {
@@ -1414,6 +1348,8 @@ window.__ModuleLoader__.load({
         splitForRanking,
         sortByAdjustedCostAsc,
         sortByMedianAsc,
+        limitRows,
+        TOP_MODELS,
       },
       apply(ctx) {
         const t = typeof ctx.locale?.bind === 'function' ? ctx.locale.bind(NS) : fallbackText

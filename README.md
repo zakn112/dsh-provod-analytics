@@ -4,12 +4,12 @@ DSH plugin: **Provod spending panel** — adds a "Spending" panel to the DSH sid
 
 ## Features
 
+- **Account balance** — exact remaining funds after reservations with a regular `PROVOD_API_KEY`, otherwise a marked credits-minus-usage estimate
 - **Today & Month-to-date totals** — current spending summary
 - **Month-end forecast** — projected spending based on current rate
 - **Daily breakdown** — spending by day with bar chart
-- **Model breakdown** — costs grouped by model with charts and tables
+- **Model breakdown** — costs grouped by model, top 10 by default with "Show all"
 - **Model efficiency** — input cache hits, error rate, response time, speed & price per million tokens
-- **Model latency** — median, p90, and medians at similar output size
 
 ## Requirements
 
