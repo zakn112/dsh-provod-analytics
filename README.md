@@ -1,92 +1,88 @@
 # dsh-provod-analytics
 
-DSH plugin: **Provod spending panel** — adds a "Spending" panel to the DSH sidebar showing Provod workspace analytics.
+Плагин DSH: **панель «Расходы»** — добавляет в левый столбец пункт «Расходы» и показывает аналитику рабочего пространства Provod.
 
-## Features
+## Возможности
 
-- **Account balance** — exact remaining funds after reservations with a regular `PROVOD_API_KEY`, otherwise a marked credits-minus-usage estimate
-- **Today & Month-to-date totals** — current spending summary
-- **Month-end forecast** — projected spending based on current rate
-- **Needed to month end (forecast)** — the forecast minus what has already been spent
-- **Daily breakdown** — spending by day with bar chart
-- **Model breakdown** — costs grouped by model, top 10 by default with "Show all"
-- **Model efficiency** — input cache hits, error rate, response time, speed & price per million tokens
+- **Остаток на счёте** — точный остаток после резервов при наличии обычного `PROVOD_API_KEY`; иначе оценка «пополнения минус расходы» с пометкой «≈»
+- **Сегодня и с начала месяца** — фактические расходы и число запросов
+- **Прогноз до конца месяца** — расходы по текущему темпу
+- **Потребность до конца месяца (прогноз)** — прогноз минус уже потраченное
+- **Расходы по дням** — столбик на каждые сутки месяца
+- **Расходы по моделям** — ТОП-10 по умолчанию, кнопка «Показать все»
+- **Эффективность моделей** — кеш входа, доля ошибок, время ответа, скорость и цена за миллион токенов
 
-## Screenshots
+## Скриншоты
 
-![Top row: Today, Month to date, Forecast, Needed to month end and Account balance](docs/top-cards.svg)
+![Верхний ряд: «Сегодня», «С начала месяца», «Прогноз до конца месяца», «Потребность до конца месяца (прогноз)» и «Остаток на счёте»](docs/top-cards.svg)
 
-![Spending by model lists with a top 10 and Show all, the efficiency table and a collapsed disclosure](docs/model-lists.svg)
+![Списки «Расходы по моделям» с ТОП-10 и кнопкой «Показать все», таблица эффективности и свёрнутый спойлер](docs/model-lists.svg)
 
-## Requirements
+## Требования
 
-- DSH 0.2.2+ with Web interface
-- Provod workspace **management key** (not a regular API key); a regular `PROVOD_API_KEY` is optional and used only for the exact balance
-- Network access to `https://api.provod.ai`
+- DSH 0.2.2+ с веб-интерфейсом
+- **Управляющий ключ** рабочего пространства Provod (не обычный API-ключ); обычный `PROVOD_API_KEY` необязателен и нужен только для точного баланса
+- Сетевой доступ к `https://api.provod.ai`
 
-## Installation
+## Установка
 
-### From GitHub (no npm registry)
+### Из GitHub (без npm-реестра)
 
-A public GitHub repository is enough: the plugin is installed from a pinned
-commit, and GitHub Actions commits the plugin-market index (`index.json`) back
-to the branch. `GITHUB.md` has the full walkthrough; the short form is:
+Публичного GitHub-репозитория достаточно: плагин ставится с закреплённого коммита, а индекс маркета GitHub Actions коммитит обратно в ветку. Полная инструкция — в `GITHUB.md`; кратко:
 
-1. Push this package to the repository root.
-2. The first push runs **Actions → Update plugin index**, which commits
-   `index.json`.
-3. Add its raw URL as a market source in **Plugins → Discover**, or install
-   directly with the pinned git spec:
+1. Запушить пакет в корень репозитория.
+2. Первый push запускает **Actions → Update plugin index**, который коммитит `index.json`.
+3. Добавить его raw-URL источником маркета в **Plugins → Discover** либо установить напрямую:
 
    ```text
    plugin_manager action=install_bundle
-   target=git+https://github.com/<owner>/<repo>.git#<40-hex commit>
+   target=git+https://github.com/<owner>/<repo>.git#<40-символьный коммит>
    ```
 
-   Index URL: `https://raw.githubusercontent.com/<owner>/<repo>/main/index.json`
+   URL индекса: `https://raw.githubusercontent.com/<owner>/<repo>/main/index.json`
 
-### From an npm registry
+### Из npm-реестра
 
-Publish with `npm publish` (see `PUBLISH.md`, including GitHub Packages), then:
+Опубликуйте через `npm publish` (см. `PUBLISH.md`, включая GitHub Packages), затем:
 
-1. Open **Plugins** → **Discover**
-2. Search for "provod"
-3. Click **Install** on "dsh-provod-analytics"
+1. Откройте **Plugins** → **Discover**
+2. Найдите «provod»
+3. Нажмите **Install** у «dsh-provod-analytics»
 
-### Manual installation
+### Ручная установка
 
 ```bash
-# Clone or download the plugin
+# Склонируйте или скачайте плагин
 git clone https://github.com/zakn112/dsh-provod-analytics.git
 
-# In DSH: Plugins → Add plugin → select the plugin directory
+# В DSH: Plugins → Add plugin → выберите каталог плагина
 ```
 
-## Configuration
+## Настройка
 
-After installation, open the **Spending** panel from the sidebar and:
+После установки откройте панель **Расходы** в левом столбце и:
 
-1. Click the **Key** section
-2. Paste your Provod workspace **management key**
-3. Click **Save key**
+1. Нажмите раздел **Ключ**
+2. Вставьте **управляющий ключ** рабочего пространства Provod
+3. Нажмите **Сохранить ключ**
 
-The key is stored in DSH's credential store and never sent to the browser.
+Ключ хранится в хранилище учётных данных DSH и никогда не отправляется в браузер.
 
-Alternatively, set the `PROVOD_MANAGEMENT_API_KEY` environment variable before starting DSH.
+Для точного остатка на счёте задайте обычный ключ `PROVOD_API_KEY` в хранилище учётных данных DSH или переменной окружения — без него остаток показывается оценкой «≈».
 
-## Data privacy
+## Приватность данных
 
-- All API requests are made from the **Host** (your machine), not the browser
-- The management key never reaches the browser
-- Only the key and date ranges are sent to `api.provod.ai`
-- No session data is read or modified
-- Disabling the plugin removes the panel and routes
+- Все запросы к API выполняет **Host** (ваша машина), а не браузер
+- Управляющий ключ никогда не попадает в браузер
+- К `api.provod.ai` передаются только ключи и диапазоны дат
+- Данные сессий не читаются и не изменяются
+- Отключение плагина убирает панель и маршруты
 
-## Limits
+## Ограничения
 
-- Provod analytics API: 2 requests/second, 30 requests/minute
-- Each panel refresh makes 4 API requests
+- Аналитика Provod: 2 запроса в секунду и 30 в минуту; панель выдерживает паузы между запросами
+- Одно обновление панели делает до пяти запросов к API
 
-## License
+## Лицензия
 
 MIT

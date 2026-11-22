@@ -1,8 +1,8 @@
 {
   "name": "dsh-provod-analytics",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
-  "description": "DSH plugin: Provod spending panel — account balance, today/month totals, month-end forecast and remaining need, daily breakdown, top-10 model costs and efficiency from the Provod analytics API",
+  "description": "Плагин DSH: панель расходов рабочего пространства Provod — остаток на счёте, суммы за сегодня и с начала месяца, прогноз и потребность до конца месяца, расходы по дням, ТОП-10 моделей и эффективность",
   "keywords": [
     "dsh-plugin",
     "provod",
