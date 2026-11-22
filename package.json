@@ -1,6 +1,6 @@
 {
   "name": "dsh-provod-analytics",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "DSH plugin: Provod spending panel — account balance, today/month totals, forecast, daily breakdown, top-10 model costs and model efficiency from the Provod analytics API",
   "keywords": [
