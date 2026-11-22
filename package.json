@@ -1,0 +1,51 @@
+{
+  "name": "dsh-provod-analytics",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "DSH plugin: Provod spending panel — today/month totals, forecast, daily breakdown, model costs, efficiency and latency from Provod analytics API",
+  "keywords": [
+    "dsh-plugin",
+    "provod",
+    "analytics",
+    "spending",
+    "sidebar-panel"
+  ],
+  "license": "MIT",
+  "author": "Provod Team",
+  "homepage": "https://github.com/your-org/dsh-provod-analytics#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/dsh-provod-analytics.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/dsh-provod-analytics/issues"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "PUBLISH.md",
+    "lib/*.mjs",
+    "locale/*.json",
+    "docs",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.2-rc.5"
+  }
+}
